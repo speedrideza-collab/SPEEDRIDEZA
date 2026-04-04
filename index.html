@@ -1,0 +1,825 @@
+--- START OF FILE index.html ---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title id="app-title-tag">Speed Ride ZA | Pro V8.1</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+
+    <style>
+        :root {
+            --primary: #007BFF; --driver-color: #28a745; --admin-color: #6f42c1;
+            --dark: #1a1a1a; --danger: #dc3545; --yoco-blue: #00aeef;
+            --warning: #f39c12; --bg: #f4f7f6;
+        }
+
+        body, html { 
+            margin: 0; padding: 0; font-family: 'Inter', sans-serif; 
+            width: 100%; height: 100dvh; background: var(--bg); overflow: hidden; 
+            position: fixed; overscroll-behavior: none; touch-action: manipulation;
+        }
+
+        #permission-gate { position: fixed; inset: 0; background: var(--dark); color: white; z-index: 2000000; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 30px; }
+
+        .alarm-strip { display: none; background: var(--danger); color: white; padding: 15px; text-align: center; font-weight: bold; position: fixed; top: 0; width: 100%; z-index: 100000; animation: blink 0.5s infinite; border-bottom: 3px solid white; }
+        @keyframes blink { 0% {background: var(--danger)} 50% {background: #000} 100% {background: var(--danger)} }
+
+        .role-nav { 
+            position: fixed; top: 0; width: 100%; height: 60px; 
+            background: var(--dark); color: white; display: flex; 
+            justify-content: space-around; align-items: center; z-index: 1000; 
+            font-size: 11px; padding-top: env(safe-area-inset-top); 
+        }
+        .role-nav div { cursor: pointer; padding: 10px 15px; border-radius: 8px; opacity: 0.5; }
+        .role-nav div.active { opacity: 1; color: var(--primary); font-weight: bold; background: rgba(255,255,255,0.1); }
+
+        #map { height: 40%; width: 100%; margin-top: 60px; z-index: 1; }
+
+        .app-shell { 
+            position: absolute; bottom: 0; width: 100%; height: 60%; 
+            background: white; border-radius: 30px 30px 0 0; 
+            box-shadow: 0 -10px 25px rgba(0,0,0,0.2); padding: 20px; 
+            box-sizing: border-box; overflow-y: auto; z-index: 10; 
+            padding-bottom: calc(40px + env(safe-area-inset-bottom)); 
+        }
+
+        .card { background: #fff; padding: 15px; border-radius: 18px; margin-bottom: 12px; border: 1px solid #eee; box-shadow: 0 4px 6px rgba(0,0,0,0.05); position: relative; }
+        .input-box { width: 100%; padding: 14px; margin: 6px 0; border: 1px solid #ddd; border-radius: 12px; box-sizing: border-box; font-size: 14px; outline: none; background: #fafafa; }
+        .btn { width: 100%; padding: 16px; border: none; border-radius: 14px; font-weight: 700; cursor: pointer; transition: 0.2s; font-size: 14px; margin-top: 5px; text-transform: uppercase; }
+        .btn:active { transform: scale(0.96); }
+        .hidden { display: none !important; }
+        
+        .overlay-auth { position:fixed; inset:0; background:white; z-index:500000; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:30px; text-align:center; overflow-y: auto; }
+        
+        .chat-box { height: 180px; overflow-y: auto; background: #f0f0f0; border-radius: 15px; padding: 15px; margin: 10px 0; border: 1px inset #ddd; }
+        .msg { margin-bottom: 10px; font-size: 13px; padding: 12px; border-radius: 15px; max-width: 85%; line-height: 1.4; }
+        .msg.sent { background: var(--primary); color: white; margin-left: auto; border-bottom-right-radius: 2px; }
+        .msg.received { background: #fff; color: #333; border-bottom-left-radius: 2px; }
+        .msg.admin-msg { background: #000; color: #79FF43; margin: 10px auto; width: 95%; text-align: center; border: 1px solid gold; font-family: 'JetBrains Mono'; }
+
+        .fare-badge { padding:15px; font-weight:800; text-align:center; color:var(--driver-color); background:#f0fff4; border-radius:12px; font-size: 26px; margin: 10px 0; border: 2px dashed var(--driver-color); }
+        .broadcast-anim { width: 12px; height: 12px; background: var(--danger); border-radius: 50%; display: inline-block; animation: pulse 1s infinite; margin-right: 8px; }
+        @keyframes pulse { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(2.5); opacity: 0; } }
+
+        .gun-console { background: #050505; color: #00ff00; font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 15px; height: 150px; overflow-y: auto; border-radius: 12px; margin-top: 10px; border: 2px solid #222; box-shadow: inset 0 0 10px #000; }
+        .status-pill { padding: 4px 10px; border-radius: 20px; font-size: 10px; font-weight: bold; text-transform: uppercase; }
+        select.input-box { appearance: none; }
+    </style>
+</head>
+<body onclick="playTouchSound()">
+
+    <!-- ALARM SYSTEM -->
+    <div id="alarm-banner" class="alarm-strip">
+        🚨 V8 ENGINE: ACTION REQUIRED 🚨
+        <br><button onclick="stopAllAlarms()" style="background:white; color:red; border:none; border-radius:8px; padding:10px 25px; margin-top:10px; font-weight:900;">STOP ALARM</button>
+    </div>
+
+    <!-- INITIALIZATION -->
+    <div id="permission-gate">
+        <h1 style="letter-spacing: 5px;">SPEED RIDE ZA</h1>
+        <p style="color: #777;">PLATINUM V8.1 CORE</p>
+        <div style="font-size: 40px; margin: 20px;">🏎️</div>
+        <button class="btn" style="background:var(--primary); color:white; width: 80%;" onclick="initSystem()">START ENGINE</button>
+    </div>
+
+    <!-- AUTHENTICATION -->
+    <div id="auth-screen" class="overlay-auth hidden">
+        <h1 id="auth-app-name" style="margin-bottom:5px;">Speed Ride ZA</h1>
+        <p id="support-email-display" style="font-size: 12px; color: #888; margin-bottom: 20px;">speedrideza@gmail.com</p>
+        
+        <div id="role-selector" style="width:100%;">
+            <button class="btn" style="background:var(--primary); color:white" onclick="startAuth('rider')">Rider Platform</button>
+            <button class="btn" style="background:var(--driver-color); color:white" onclick="startAuth('driver')">Driver Platform</button>
+            <button class="btn" style="background:var(--admin-color); color:white" onclick="startAuth('admin')">Admin Console</button>
+        </div>
+
+        <!-- AUTH INPUTS (Dynamic based on Admin Settings) -->
+        <div id="auth-inputs-container" class="hidden" style="width:100%">
+            <!-- Method: Phone (Simulated or Firebase) -->
+            <div id="auth-group-phone" class="hidden">
+                <input type="tel" id="login-phone" class="input-box" placeholder="Phone Number (+27...)">
+                <button class="btn" style="background:var(--dark); color:white" onclick="handleAuthSubmit()">Request Secure Access</button>
+            </div>
+
+            <!-- Method: Email/Password -->
+            <div id="auth-group-email" class="hidden">
+                <input type="email" id="login-email" class="input-box" placeholder="Email Address">
+                <input type="password" id="login-pass" class="input-box" placeholder="Password">
+                <button class="btn" style="background:var(--dark); color:white" onclick="handleAuthSubmit()">Sign In / Register</button>
+            </div>
+
+            <div id="otp-verify" class="hidden" style="margin-top:15px;">
+                <p id="sim-otp-label" style="font-size:12px; color:red;">Simulated SMS Code: <span id="sim-otp" style="font-weight:bold;"></span></p>
+                <input type="number" id="otp-input" class="input-box" placeholder="Enter 4-Digit Code">
+                <button class="btn" style="background:var(--driver-color); color:white" onclick="verifyOTP()">Verify Identity</button>
+            </div>
+        </div>
+
+        <div id="reg-area" class="hidden" style="width:100%; text-align: left;">
+            <h3 style="text-align: center;">Register Profile</h3>
+            <label>Full Name</label><input type="text" id="reg-name" class="input-box" placeholder="John Doe">
+            <div id="dr-fields" class="hidden">
+                <label>Vehicle Name</label><input type="text" id="reg-v-name" class="input-box" placeholder="Toyota Corolla">
+                <label>License Plate</label><input type="text" id="reg-v-plate" class="input-box" placeholder="GP 123 456">
+            </div>
+            <button class="btn" style="background:var(--primary); color:white" onclick="saveAccount()">Save & Request Access</button>
+        </div>
+
+        <div id="admin-area" class="hidden" style="width:100%">
+            <input type="text" id="adm-user" class="input-box" placeholder="Admin Username">
+            <input type="password" id="adm-pass" class="input-box" placeholder="Password">
+            <button class="btn" style="background:var(--admin-color); color:white" onclick="loginAdmin()">Login to Console</button>
+        </div>
+    </div>
+
+    <nav class="role-nav hidden" id="main-nav">
+        <div id="nav-user" class="hidden" onclick="switchRole('user')">RIDER</div>
+        <div id="nav-driver" class="hidden" onclick="switchRole('driver')">DRIVER</div>
+        <div id="nav-admin" class="hidden" onclick="switchRole('admin')">ADMIN</div>
+        <div onclick="logout()" style="color:var(--danger); font-weight:bold;">LOGOUT</div>
+    </nav>
+
+    <div id="map"></div>
+
+    <div class="app-shell hidden" id="main-app">
+        
+        <!-- PENDING SCREEN -->
+        <div id="section-pending" class="role-section hidden" style="text-align:center; padding:40px 10px;">
+            <div style="font-size:80px; margin-bottom: 20px;">⏳</div>
+            <h2>Pending Approval</h2>
+            <p>Your V8 profile is under review by Speed Ride Admin. Once approved, this screen will refresh automatically.</p>
+            <p style="font-size:12px; color:#999; margin-top:20px;">Support: <span class="support-email">speedrideza@gmail.com</span></p>
+        </div>
+
+        <!-- RIDER SECTION -->
+        <div id="section-user" class="role-section hidden">
+            <div id="rider-active-trip" class="card hidden" style="border: 2px solid var(--primary); background: #f0f7ff;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <h4 id="ride-status-label" style="margin:0;"><span class="broadcast-anim"></span> BROADCASTED</h4>
+                    <button class="btn" style="width:auto; padding:8px 15px; margin:0; background:var(--danger); color:white; font-size:10px;" onclick="reportTrip()">FILE REPORT</button>
+                </div>
+                <div id="ride-details" style="font-size:14px; background:white; padding:10px; border-radius:10px; border:1px solid #ddd;">
+                    Connecting to the V8 Network...
+                </div>
+                <div id="rider-controls" class="hidden" style="margin-top:15px;">
+                    <div style="display:flex; gap:10px; margin-bottom:10px;">
+                        <button class="btn" style="background:var(--dark); color:white; flex:1;" onclick="callDriver()">📞 CALL</button>
+                        <button class="btn" style="background:var(--primary); color:white; flex:1;" onclick="toggleChat()">💬 CHAT</button>
+                    </div>
+                    <div id="rider-chat-area" class="hidden">
+                        <div class="chat-box" id="rider-messages"></div>
+                        <div style="display:flex; gap:5px;">
+                            <input type="text" id="rider-msg-input" class="input-box" style="margin:0" placeholder="Type message...">
+                            <button class="btn" style="width:80px; margin:0;" onclick="sendMessage('rider')">SEND</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="rider-booking" class="card">
+                <h3 style="margin-top:0;">Request V8 Ride</h3>
+                <input type="text" id="p-from" class="input-box" placeholder="Pickup Address" oninput="calculateFare()">
+                <input type="text" id="p-to" class="input-box" placeholder="Destination Address" oninput="calculateFare()">
+                <div id="price-est" class="fare-badge">R0.00</div>
+                <button class="btn" style="background:var(--primary); color:white;" onclick="requestRide()">BROADCAST TO FLEET</button>
+            </div>
+        </div>
+
+        <!-- DRIVER SECTION -->
+        <div id="section-driver" class="role-section hidden">
+            <div class="card" style="background: var(--dark); color: white;">
+                <h3 style="margin:0 0 10px 0;">V8 Credits: <span id="dr-credit-count" style="color:var(--driver-color)">0</span></h3>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn" style="background:var(--yoco-blue); color:white; font-size:11px;" onclick="buyCredits('option1')">
+                        <span id="lbl-c1">R55</span> (<span id="lbl-v1">5</span> Jobs)
+                    </button>
+                    <button class="btn" style="background:var(--primary); color:white; font-size:11px;" onclick="buyCredits('option2')">
+                        <span id="lbl-c2">R165</span> (<span id="lbl-v2">15</span> Jobs)
+                    </button>
+                </div>
+            </div>
+            <h3 style="margin:20px 0 10px 0;">V8 Network Jobs</h3>
+            <div id="driver-job-list">Searching for active signals...</div>
+        </div>
+
+        <!-- ADMIN SECTION -->
+        <div id="section-admin" class="role-section hidden">
+            <h2 style="color:var(--admin-color); margin:0 0 15px 0;">Master Console</h2>
+            
+            <!-- NEW: AUTH CONFIGURATION CARD -->
+            <div class="card" style="border-top: 5px solid #000; background: #fffcf0;">
+                <h4>Firebase Auth Management</h4>
+                <label>Authentication Method</label>
+                <select id="adm-cfg-auth-method" class="input-box" onchange="toggleAuthFields()">
+                    <option value="simulated">Simulated OTP (No Firebase Setup)</option>
+                    <option value="fb_email">Firebase Email & Password</option>
+                    <option value="fb_phone">Firebase Phone Auth (SMS)</option>
+                </select>
+                <div id="adm-auth-warning" style="font-size:10px; color:var(--danger); margin-bottom:10px;">
+                    * Ensure Firebase Auth is enabled in your Console.
+                </div>
+            </div>
+
+            <div class="card" style="border-top: 5px solid var(--primary);">
+                <h4>System Configuration</h4>
+                <label>Application Title</label><input type="text" id="adm-cfg-title" class="input-box">
+                <label>Global KM Rate (R)</label><input type="number" id="adm-cfg-rate" class="input-box">
+                <label>Support Email</label><input type="text" id="adm-cfg-email" class="input-box">
+                <div style="display:flex; gap:10px;">
+                    <div><label>Price 1 (R)</label><input type="number" id="adm-cfg-p1" class="input-box"></div>
+                    <div><label>Value 1</label><input type="number" id="adm-cfg-v1" class="input-box"></div>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <div><label>Price 2 (R)</label><input type="number" id="adm-cfg-p2" class="input-box"></div>
+                    <div><label>Value 2</label><input type="number" id="adm-cfg-v2" class="input-box"></div>
+                </div>
+                <hr>
+                <label>Payment (Yoco) Link</label><input type="text" id="adm-cfg-yoco" class="input-box">
+                <label>Firebase API Key</label><input type="text" id="adm-cfg-fb-key" class="input-box">
+                <label>Database URL</label><input type="text" id="adm-cfg-fb-db" class="input-box">
+                <label>Admin Username</label><input type="text" id="adm-cfg-user" class="input-box">
+                <label>Admin Password</label><input type="text" id="adm-cfg-pass" class="input-box">
+                <button class="btn" style="background:var(--dark); color:white" onclick="updateGlobalSettings()">SYNC & SAVE PERMANENTLY</button>
+            </div>
+
+            <div class="card" style="background:#f8f9ff">
+                <h4>Dynamic Role Access Links</h4>
+                <p style="font-size:10px; color:#666;">Distribute these for instant signups:</p>
+                <div id="role-links" style="font-size:11px; word-break:break-all; background:#fff; padding:12px; border:1px solid #ddd; border-radius:8px; line-height:1.8;"></div>
+            </div>
+
+            <div class="card">
+                <h4>V8 Live Data Stream</h4>
+                <div class="gun-console" id="gun-monitor">CORE INITIALIZED...</div>
+            </div>
+
+            <div class="card" style="border-top: 5px solid var(--warning);">
+                <h4>Approval Queue</h4>
+                <div id="admin-queue-list">Scanning...</div>
+            </div>
+
+            <div class="card" style="border-top: 5px solid var(--danger);">
+                <h4>Active Trip Monitor</h4>
+                <div id="admin-trip-monitor">Monitoring 0 active trips.</div>
+            </div>
+
+            <div class="card">
+                <h4>User Database</h4>
+                <div style="overflow-x:auto;">
+                    <table style="width:100%; font-size:11px; border-collapse:collapse;" border="1" cellpadding="8">
+                        <thead><tr style="background:#eee"><th>User Info</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>
+                        <tbody id="admin-user-table"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card" style="background:#fff5f5; border: 2px solid var(--danger);">
+                <h4 style="color:var(--danger)">Safety Reports</h4>
+                <div id="admin-reports">No safety alerts.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AUDIO -->
+    <audio id="snd-welcome" src="https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3"></audio>
+    <audio id="snd-touch" src="https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3"></audio>
+    <audio id="snd-alarm" src="https://assets.mixkit.co/active_storage/sfx/951/951-preview.mp3" loop></audio>
+
+    <div id="recaptcha-container"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const M_KEY = 'SR_PLATINUM_V81_FINAL_SECURE';
+        const S_KEY = 'SR_ACTIVE_PH_SESSION';
+        
+        let db = JSON.parse(localStorage.getItem(M_KEY)) || {
+            config: {
+                title: "Speed Ride ZA", kmRate: 15.00, yoco: "https://pay.yoco.com/speedride",
+                email: "speedrideza@gmail.com", authMethod: "simulated",
+                fbKey: "AIzaSyB-DEFAULT-V8-KEY", fbDb: "https://speedride-v8-default.firebaseio.com",
+                admUser: "admin", admPass: "1234",
+                p1: 55, v1: 5, p2: 165, v2: 15
+            },
+            profiles: {}, rides: [], topups: [], chats: {}, reports: [], locations: {}
+        };
+
+        let fbDB, fbAuth, curPh = localStorage.getItem(S_KEY), appRole = '', map, alarmActive = false;
+        let markers = {};
+
+        function logGun(msg) {
+            const mon = document.getElementById('gun-monitor');
+            if(mon) {
+                mon.innerHTML += `<br><span style="color:#888">></span> ${msg}`;
+                mon.scrollTop = mon.scrollHeight;
+            }
+        }
+
+        function initSystem() {
+            document.getElementById('permission-gate').style.display = 'none';
+            document.getElementById('snd-welcome').play();
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const joinRole = urlParams.get('join');
+
+            if(db.config.fbKey && !db.config.fbKey.includes('DEFAULT')) {
+                const firebaseConfig = { apiKey: db.config.fbKey, databaseURL: db.config.fbDb, authDomain: db.config.fbDb.replace("https://", "").split(".")[0] + ".firebaseapp.com" };
+                if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+                fbDB = firebase.database();
+                fbAuth = firebase.auth();
+                
+                fbDB.ref('SR_V8_CLOUD').on('value', snap => {
+                    const cloud = snap.val();
+                    if(cloud) {
+                        if(db.rides.length < (cloud.rides?.length || 0)) triggerAlarm();
+                        db = cloud;
+                        syncPlatform();
+                    }
+                });
+            }
+            
+            if(curPh && db.profiles[curPh]) {
+                enterApp(db.profiles[curPh].role);
+            } else {
+                document.getElementById('auth-screen').classList.remove('hidden');
+                if(joinRole) startAuth(joinRole);
+            }
+            
+            startLocationTracking();
+            syncPlatform();
+        }
+
+        function playTouchSound() { document.getElementById('snd-touch').play().catch(()=>{}); }
+        
+        function triggerAlarm() { 
+            if(alarmActive) return;
+            document.getElementById('snd-alarm').play().catch(()=>{}); 
+            document.getElementById('alarm-banner').style.display = 'block';
+            alarmActive = true;
+        }
+        
+        function stopAllAlarms() { 
+            document.getElementById('snd-alarm').pause(); 
+            document.getElementById('alarm-banner').style.display = 'none';
+            alarmActive = false;
+        }
+
+        function save() {
+            localStorage.setItem(M_KEY, JSON.stringify(db));
+            if(fbDB) fbDB.ref('SR_V8_CLOUD').set(db);
+            syncPlatform();
+            logGun("DATABASE_SYNC_SUCCESSFUL");
+        }
+
+        function startAuth(role) {
+            document.getElementById('role-selector').classList.add('hidden');
+            if(role === 'admin') {
+                document.getElementById('admin-area').classList.remove('hidden');
+            } else {
+                appRole = role;
+                document.getElementById('auth-inputs-container').classList.remove('hidden');
+                if(db.config.authMethod === 'fb_email') {
+                    document.getElementById('auth-group-email').classList.remove('hidden');
+                } else {
+                    document.getElementById('auth-group-phone').classList.remove('hidden');
+                }
+            }
+        }
+
+        async function handleAuthSubmit() {
+            const method = db.config.authMethod;
+            
+            if(method === 'simulated') {
+                const ph = document.getElementById('login-phone').value;
+                if(!ph) return alert("Enter Phone");
+                const code = Math.floor(1000 + Math.random()*9000);
+                document.getElementById('sim-otp').innerText = code;
+                document.getElementById('sim-otp-label').classList.remove('hidden');
+                document.getElementById('otp-verify').classList.remove('hidden');
+                window.lastOTP = code.toString();
+            } 
+            else if(method === 'fb_email') {
+                const email = document.getElementById('login-email').value;
+                const pass = document.getElementById('login-pass').value;
+                try {
+                    const res = await fbAuth.signInWithEmailAndPassword(email, pass).catch(() => fbAuth.createUserWithEmailAndPassword(email, pass));
+                    curPh = email; // Using email as ID
+                    finalizeAuth();
+                } catch(e) { alert(e.message); }
+            } 
+            else if(method === 'fb_phone') {
+                const ph = document.getElementById('login-phone').value;
+                window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {size: 'invisible'});
+                fbAuth.signInWithPhoneNumber(ph, window.recaptchaVerifier).then(confirmResult => {
+                    window.confirmationResult = confirmResult;
+                    document.getElementById('sim-otp-label').classList.add('hidden');
+                    document.getElementById('otp-verify').classList.remove('hidden');
+                }).catch(e => alert(e.message));
+            }
+        }
+
+        async function verifyOTP() {
+            if(db.config.authMethod === 'simulated') {
+                if(document.getElementById('otp-input').value === window.lastOTP) {
+                    curPh = document.getElementById('login-phone').value;
+                    finalizeAuth();
+                } else alert("Invalid Code");
+            } else {
+                const code = document.getElementById('otp-input').value;
+                window.confirmationResult.confirm(code).then(res => {
+                    curPh = res.user.phoneNumber;
+                    finalizeAuth();
+                }).catch(e => alert("Invalid SMS Code"));
+            }
+        }
+
+        function finalizeAuth() {
+            if(!db.profiles[curPh]) {
+                document.getElementById('auth-inputs-container').classList.add('hidden');
+                document.getElementById('reg-area').classList.remove('hidden');
+                if(appRole === 'driver') document.getElementById('dr-fields').classList.remove('hidden');
+            } else {
+                localStorage.setItem(S_KEY, curPh);
+                enterApp(db.profiles[curPh].role);
+            }
+        }
+
+        function saveAccount() {
+            const name = document.getElementById('reg-name').value;
+            if(!name) return alert("Enter Name");
+            db.profiles[curPh] = {
+                name: name, phone: curPh, role: appRole, status: 'pending', credits: 0,
+                vName: document.getElementById('reg-v-name').value || 'N/A',
+                vPlate: document.getElementById('reg-v-plate').value || 'N/A',
+                joined: new Date().toLocaleString()
+            };
+            localStorage.setItem(S_KEY, curPh);
+            save();
+            enterApp(appRole);
+        }
+
+        function loginAdmin() {
+            if(document.getElementById('adm-user').value === db.config.admUser && 
+               document.getElementById('adm-pass').value === db.config.admPass) {
+                enterApp('admin');
+            } else alert("Invalid Admin Credentials");
+        }
+
+        function enterApp(role) {
+            appRole = role;
+            document.getElementById('auth-screen').classList.add('hidden');
+            document.getElementById('main-nav').classList.remove('hidden');
+            document.getElementById('main-app').classList.remove('hidden');
+            
+            if(role === 'admin') document.getElementById('nav-admin').classList.remove('hidden');
+            else if(role === 'driver') document.getElementById('nav-driver').classList.remove('hidden');
+            else document.getElementById('nav-user').classList.remove('hidden');
+
+            if(!map) {
+                map = L.map('map', {zoomControl:false}).setView([-26.20, 28.04], 13);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+            }
+            switchRole(role === 'rider' ? 'user' : role);
+            logGun(`APP_ENTERED_AS_${role.toUpperCase()}`);
+        }
+
+        function switchRole(r) {
+            document.querySelectorAll('.role-section').forEach(s => s.classList.add('hidden'));
+            document.querySelectorAll('.role-nav div').forEach(d => d.classList.remove('active'));
+            
+            const prof = db.profiles[curPh];
+            if(r !== 'admin' && prof && (prof.status === 'pending' || prof.status === 'blocked')) {
+                document.getElementById('section-pending').classList.remove('hidden');
+            } else {
+                const target = document.getElementById('section-' + r);
+                if(target) target.classList.remove('hidden');
+            }
+            
+            const navId = (r === 'user' ? 'nav-user' : (r === 'driver' ? 'nav-driver' : 'nav-admin'));
+            if(document.getElementById(navId)) document.getElementById(navId).classList.add('active');
+            syncPlatform();
+        }
+
+        function calculateFare() {
+            const from = document.getElementById('p-from').value;
+            const to = document.getElementById('p-to').value;
+            if(from && to) {
+                const simulatedDist = (from.length + to.length) / 2.2;
+                const total = (simulatedDist * db.config.kmRate).toFixed(2);
+                document.getElementById('price-est').innerText = 'R' + total;
+            }
+        }
+
+        function syncPlatform() {
+            document.getElementById('app-title-tag').innerText = db.config.title;
+            document.getElementById('auth-app-name').innerText = db.config.title;
+            document.querySelectorAll('.support-email').forEach(e => e.innerText = db.config.email);
+            document.getElementById('support-email-display').innerText = db.config.email;
+
+            if(document.getElementById('lbl-c1')) {
+                document.getElementById('lbl-c1').innerText = 'R' + db.config.p1;
+                document.getElementById('lbl-v1').innerText = db.config.v1;
+                document.getElementById('lbl-c2').innerText = 'R' + db.config.p2;
+                document.getElementById('lbl-v2').innerText = db.config.v2;
+            }
+
+            if(appRole === 'rider' || (db.profiles[curPh]?.role === 'rider')) {
+                const active = db.rides.find(r => r.ph === curPh && r.status !== 'Completed');
+                if(active) {
+                    document.getElementById('rider-active-trip').classList.remove('hidden');
+                    document.getElementById('rider-booking').classList.add('hidden');
+                    document.getElementById('ride-status-label').innerHTML = `<span class="broadcast-anim"></span> ${active.status.toUpperCase()}`;
+                    
+                    if(active.status !== 'Searching') {
+                        document.getElementById('rider-controls').classList.remove('hidden');
+                        const dr = db.profiles[active.driverPh] || {name: "V8 Driver", vName: "Fleet", vPlate: "---"};
+                        document.getElementById('ride-details').innerHTML = `
+                            <strong>DRIVER:</strong> ${dr.name}<br>
+                            <strong>VEHICLE:</strong> ${dr.vName} (${dr.vPlate})<br>
+                            <strong>FARE:</strong> R${active.fare}
+                        `;
+                        renderChat(active.id, 'rider-messages');
+                    } else {
+                        document.getElementById('ride-details').innerText = "Signal broadcasted. Waiting for a driver to intercept...";
+                        document.getElementById('rider-controls').classList.add('hidden');
+                    }
+                } else {
+                    document.getElementById('rider-active-trip').classList.add('hidden');
+                    document.getElementById('rider-booking').classList.remove('hidden');
+                }
+            }
+
+            if(appRole === 'driver' || (db.profiles[curPh]?.role === 'driver')) {
+                document.getElementById('dr-credit-count').innerText = db.profiles[curPh].credits;
+                const active = db.rides.find(r => r.driverPh === curPh && r.status !== 'Completed');
+                const list = document.getElementById('driver-job-list');
+                
+                if(active) {
+                    list.innerHTML = `
+                        <div class="card" style="border-left:5px solid var(--warning)">
+                            <h4>Trip Status: ${active.status}</h4>
+                            <p><strong>Pickup:</strong> ${active.from} <br> <strong>Drop:</strong> ${active.to}</p>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:5px; margin-bottom:10px;">
+                                <button class="btn" style="background:#000; color:white; font-size:10px;" onclick="gps('${active.from}')">NAV PICKUP</button>
+                                <button class="btn" style="background:#000; color:white; font-size:10px;" onclick="gps('${active.to}')">NAV DROP</button>
+                            </div>
+                            <button class="btn" style="background:var(--warning); color:white" onclick="updateRideStatus(${active.id}, 'Driver Arrived')">I HAVE ARRIVED</button>
+                            <button class="btn" style="background:var(--primary); color:white" onclick="updateRideStatus(${active.id}, 'EnRoute')">START TRIP</button>
+                            <button class="btn" style="background:green; color:white" onclick="updateRideStatus(${active.id}, 'Completed')">FINISH RIDE</button>
+                            <div class="chat-box" id="driver-messages"></div>
+                            <div style="display:flex; gap:5px;">
+                                <input type="text" id="driver-msg-input" class="input-box" placeholder="Message Rider...">
+                                <button class="btn" style="width:80px;" onclick="sendMessage('driver')">SEND</button>
+                            </div>
+                        </div>
+                    `;
+                    renderChat(active.id, 'driver-messages');
+                } else {
+                    const open = db.rides.filter(r => r.status === 'Searching');
+                    list.innerHTML = open.map(r => `
+                        <div class="card">
+                            <span style="float:right; color:green; font-weight:bold;">R${r.fare}</span>
+                            <strong>${r.riderName}</strong>
+                            <p style="font-size:12px;">${r.from} ➔ ${r.to}</p>
+                            <div style="display:flex; gap:5px;">
+                                <button class="btn" style="background:var(--driver-color); color:white" onclick="acceptRide(${r.id})">ACCEPT JOB</button>
+                                <button class="btn" style="background:#ccc; color:black" onclick="this.parentElement.parentElement.remove()">DECLINE</button>
+                            </div>
+                        </div>
+                    `).join('') || "Scanning network for signals...";
+                }
+            }
+
+            if(appRole === 'admin') syncAdmin();
+            updateMapMarkers();
+        }
+
+        function requestRide() {
+            const fare = document.getElementById('price-est').innerText.replace('R','');
+            if(fare == "0.00") return alert("Enter addresses");
+            const ride = {
+                id: Date.now(), ph: curPh, riderName: db.profiles[curPh].name,
+                from: document.getElementById('p-from').value,
+                to: document.getElementById('p-to').value,
+                status: 'Searching', fare: fare, driverPh: ''
+            };
+            db.rides.push(ride);
+            save();
+            triggerAlarm();
+        }
+
+        function acceptRide(id) {
+            if(db.profiles[curPh].credits < 1) return alert("Top up your credits to accept jobs.");
+            const ride = db.rides.find(r => r.id === id);
+            if(ride && ride.status === 'Searching') {
+                ride.status = 'Driver Accepted';
+                ride.driverPh = curPh;
+                db.profiles[curPh].credits -= 1;
+                save();
+                stopAllAlarms();
+            }
+        }
+
+        function updateRideStatus(id, status) {
+            const ride = db.rides.find(r => r.id === id);
+            if(ride) {
+                ride.status = status;
+                save();
+            }
+        }
+
+        function gps(addr) { window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addr)}`); }
+
+        function buyCredits(opt) {
+            const amt = opt === 'option1' ? db.config.p1 : db.config.p2;
+            const creds = opt === 'option1' ? db.config.v1 : db.config.v2;
+            db.topups.push({ id: Date.now(), ph: curPh, name: db.profiles[curPh].name, amt, creds, status: 'pending' });
+            save();
+            triggerAlarm();
+            window.open(db.config.yoco);
+        }
+
+        function sendMessage(role) {
+            const inp = document.getElementById(role + '-msg-input');
+            const ride = db.rides.find(r => (role==='rider' ? r.ph : r.driverPh) === curPh && r.status !== 'Completed');
+            if(!ride || !inp.value) return;
+            if(!db.chats[ride.id]) db.chats[ride.id] = [];
+            db.chats[ride.id].push({ sender: curPh, text: inp.value, time: new Date().toLocaleTimeString() });
+            inp.value = '';
+            save();
+        }
+
+        function renderChat(rideId, containerId) {
+            const box = document.getElementById(containerId);
+            if(!box || !db.chats[rideId]) return;
+            box.innerHTML = db.chats[rideId].map(m => `
+                <div class="msg ${m.sender === curPh ? 'sent' : (m.sender === 'SYSTEM' ? 'admin-msg' : 'received')}">
+                    ${m.text} <br><small style="opacity:0.6; font-size:9px;">${m.time}</small>
+                </div>
+            `).join('');
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function toggleChat() { document.getElementById('rider-chat-area').classList.toggle('hidden'); }
+
+        function reportTrip() {
+            const ride = db.rides.find(r => r.ph === curPh && r.status !== 'Completed');
+            if(!ride) return;
+            db.reports.push({ id: Date.now(), reporter: db.profiles[curPh].name, victim: ride.driverPh, details: "Safety/Service Incident Reported", rideId: ride.id });
+            save();
+            alert("EMERGENCY: Report sent to Master Admin.");
+        }
+
+        function callDriver() {
+            const ride = db.rides.find(r => r.ph === curPh && r.status !== 'Completed');
+            if(ride && ride.driverPh) window.open('tel:' + ride.driverPh);
+        }
+
+        function syncAdmin() {
+            document.getElementById('adm-cfg-auth-method').value = db.config.authMethod;
+            document.getElementById('adm-cfg-title').value = db.config.title;
+            document.getElementById('adm-cfg-rate').value = db.config.kmRate;
+            document.getElementById('adm-cfg-email').value = db.config.email;
+            document.getElementById('adm-cfg-p1').value = db.config.p1;
+            document.getElementById('adm-cfg-v1').value = db.config.v1;
+            document.getElementById('adm-cfg-p2').value = db.config.p2;
+            document.getElementById('adm-cfg-v2').value = db.config.v2;
+            document.getElementById('adm-cfg-yoco').value = db.config.yoco;
+            document.getElementById('adm-cfg-fb-key').value = db.config.fbKey;
+            document.getElementById('adm-cfg-fb-db').value = db.config.fbDb;
+            document.getElementById('adm-cfg-user').value = db.config.admUser;
+            document.getElementById('adm-cfg-pass').value = db.config.admPass;
+
+            const base = window.location.href.split('?')[0];
+            document.getElementById('role-links').innerHTML = `
+                <b>Rider:</b> ${base}?join=rider<br>
+                <b>Driver:</b> ${base}?join=driver
+            `;
+
+            const q = document.getElementById('admin-queue-list');
+            let qHtml = '';
+            Object.values(db.profiles).filter(p => p.status === 'pending').forEach(p => {
+                qHtml += `<div class="card"><strong>USER:</strong> ${p.name} (${p.role.toUpperCase()}) <br> <button class="btn" style="background:var(--primary); color:white" onclick="approveUser('${p.phone}')">APPROVE ACCESS</button></div>`;
+            });
+            db.topups.filter(t => t.status === 'pending').forEach(t => {
+                qHtml += `<div class="card"><strong>CREDIT REQ:</strong> ${t.name} (R${t.amt}) <br> <button class="btn" style="background:var(--driver-color); color:white" onclick="approveTopup(${t.id})">CONFIRM PAYMENT & CREDIT</button></div>`;
+            });
+            q.innerHTML = qHtml || "No pending approvals.";
+
+            document.getElementById('admin-user-table').innerHTML = Object.values(db.profiles).map(p => `
+                <tr>
+                    <td>${p.name}<br><small>${p.phone}</small></td>
+                    <td>${p.role}</td>
+                    <td><span class="status-pill" style="background:${p.status==='approved'?'#dcfce7':'#fee2e2'}">${p.status}</span></td>
+                    <td>
+                        <button onclick="toggleBlock('${p.phone}')">Block</button>
+                        <button onclick="deleteUser('${p.phone}')" style="color:red">Del</button>
+                    </td>
+                </tr>
+            `).join('');
+
+            document.getElementById('admin-trip-monitor').innerHTML = db.rides.filter(r => r.status !== 'Completed').map(r => `
+                <div class="card">
+                    <strong>Trip #${r.id}</strong> - ${r.status} <br>
+                    <small>Rider: ${r.riderName} | Driver: ${r.driverPh || 'Searching'}</small>
+                    <div class="chat-box" style="height:100px" id="admin-chat-${r.id}"></div>
+                    <div style="display:flex; gap:5px;">
+                        <input id="admin-msg-${r.id}" class="input-box" placeholder="System message...">
+                        <button class="btn" style="width:70px; margin:0;" onclick="adminIntervene(${r.id})">SEND</button>
+                    </div>
+                </div>
+            `).join('') || "No active trips.";
+            db.rides.filter(r => r.status !== 'Completed').forEach(r => renderChat(r.id, `admin-chat-${r.id}`));
+
+            document.getElementById('admin-reports').innerHTML = db.reports.map(rep => `
+                <div class="card" style="border:1px solid red">
+                    <strong>${rep.reporter}</strong> reported <strong>${rep.victim}</strong>
+                    <p style="margin:5px 0">${rep.details}</p>
+                    <button class="btn" style="background:black; color:white" onclick="toggleBlock('${rep.victim}')">INSTANT BLOCK VICTIM</button>
+                </div>
+            `).join('') || "No reports filed.";
+        }
+
+        function updateGlobalSettings() {
+            db.config.authMethod = document.getElementById('adm-cfg-auth-method').value;
+            db.config.title = document.getElementById('adm-cfg-title').value;
+            db.config.kmRate = parseFloat(document.getElementById('adm-cfg-rate').value);
+            db.config.email = document.getElementById('adm-cfg-email').value;
+            db.config.p1 = parseFloat(document.getElementById('adm-cfg-p1').value);
+            db.config.v1 = parseInt(document.getElementById('adm-cfg-v1').value);
+            db.config.p2 = parseFloat(document.getElementById('adm-cfg-p2').value);
+            db.config.v2 = parseInt(document.getElementById('adm-cfg-v2').value);
+            db.config.yoco = document.getElementById('adm-cfg-yoco').value;
+            db.config.fbKey = document.getElementById('adm-cfg-fb-key').value;
+            db.config.fbDb = document.getElementById('adm-cfg-fb-db').value;
+            db.config.admUser = document.getElementById('adm-cfg-user').value;
+            db.config.admPass = document.getElementById('adm-cfg-pass').value;
+            save();
+            alert("PLATINUM SETTINGS SYNCED.");
+            location.reload(); 
+        }
+
+        function approveUser(ph) { db.profiles[ph].status = 'approved'; save(); }
+        function toggleBlock(ph) { 
+            if(!db.profiles[ph]) return;
+            db.profiles[ph].status = db.profiles[ph].status === 'blocked' ? 'approved' : 'blocked'; 
+            save(); 
+        }
+        function deleteUser(ph) { if(confirm("Delete user permanent?")) { delete db.profiles[ph]; save(); } }
+        
+        function approveTopup(id) {
+            const t = db.topups.find(x => x.id === id);
+            if(t) {
+                db.profiles[t.ph].credits += t.creds;
+                t.status = 'approved';
+                save();
+            }
+        }
+        function adminIntervene(rideId) {
+            const txt = document.getElementById('admin-msg-'+rideId).value;
+            if(!db.chats[rideId]) db.chats[rideId] = [];
+            db.chats[rideId].push({ sender: 'SYSTEM', text: "[MASTER ADMIN]: " + txt, time: new Date().toLocaleTimeString() });
+            save();
+        }
+
+        function startLocationTracking() {
+            if(navigator.geolocation) {
+                navigator.geolocation.watchPosition(pos => {
+                    const latlng = [pos.coords.latitude, pos.coords.longitude];
+                    if(curPh) {
+                        db.locations[curPh] = { latlng, role: db.profiles[curPh]?.role };
+                        if(fbDB) fbDB.ref('SR_V8_CLOUD/locations/' + curPh).set(db.locations[curPh]);
+                    }
+                }, err => console.log(err), { enableHighAccuracy: true });
+            }
+        }
+
+        function updateMapMarkers() {
+            if(!map) return;
+            Object.keys(db.locations).forEach(ph => {
+                const loc = db.locations[ph];
+                const label = db.profiles[ph]?.name || "User";
+                const isDriver = loc.role === 'driver';
+
+                if(!markers[ph]) {
+                    const icon = L.divIcon({
+                        html: `<div style="background:${isDriver?'green':'blue'}; width:12px; height:12px; border-radius:50%; border:2px solid white;"></div>`,
+                        className: 'custom-icon'
+                    });
+                    markers[ph] = L.marker(loc.latlng, {icon}).addTo(map).bindPopup(label);
+                } else { markers[ph].setLatLng(loc.latlng); }
+            });
+        }
+
+        function logout() { localStorage.removeItem(S_KEY); location.reload(); }
+    </script>
+</body>
+</html>
